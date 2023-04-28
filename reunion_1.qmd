@@ -1,0 +1,280 @@
+---
+title: "Reunion 1 - Año 2023"
+format: 
+  html:
+    toc: true
+    code-annotations: select
+---
+
+## Paquetes que vamos a usar
+
+```{r carga de paquetes}
+#| code-line-numbers: true
+#| warning: false
+
+# tidyverse
+
+library(tidyverse)                      # <1>
+
+# para carga de datos
+
+library(readxl) # <2>
+
+library(here)
+
+#
+```
+
+1.  De acá usamos `ggplot2` para los gráficos; `dplyr` para manejos de datos; `forcats` para manejar los factores o variables categóricas
+2.  Con este paquete vamos a poder cargar archivos .xls o .xlsx
+
+## Tipos de variables
+
+-   Cualitativas o categóricas
+
+```{r}
+
+tibble(pelo = c("unicolor", # <2>
+                "bicolor", # <2>
+                "tricolor"), # <2>
+       juega = c("Si", # <1>
+                 "No", # <1>
+                 "No"),
+       edad = c("cria", # <3>
+                "joven", # <3>
+                "adulto")) # <3>
+
+```
+
+1. En este caso la variable es dicotómica o binaria
+2. En este caso la variable posee varias categorías
+3. En R aparecen como chr o fct (factores). Estos últimos agrupan datos según su categoría
+
+-   Cuantitativas o numéricas
+
+```{r}
+tibble(gatos = c(2, 7, 1, 2, 2),
+       temperatura_nariz = c(36.8, 35, 37.6, 38.2, 35))
+```
+
+## Escalas de medición
+
+-   Nominal: clasificacion de objetos, personas, caracteristicas 
+
+-   Ordinal: acá también tenemos categorías pero estas categorias siguen un orden especifico 
+
+-   De intervalo: Estas son cuantitativas, pero en este caso el cero es arbitrario. (Temperatura, longitudes)
+
+-   De razón: en esta escala el cero es sinonimo de ausencia (Peso, altura)
+
+```{r}
+info_gatos <- tibble(pelo = c("unicolor", # <1>
+                "bicolor", # <1>
+                "tricolor", # <1>
+                "bicolor", # <1>
+                "bicolor"), # <1>
+       juega = c("Si", # <2>
+                 "No", # <2>
+                 "No", # <2>
+                 "Si", # <2>
+                 "Si"), # <2>
+       edad = c("adulto",  # <3>
+                "adulto", # <3>
+                "cria", # <3>
+                "joven", # <3>
+                "cria"), # <3>
+       temperatura_nariz = c(36.8, 35, 37.6, 38.2, 35), # <4>
+       altura = c(.30, .42, .53, .25, .12))  # <5>
+
+info_gatos_2 <- info_gatos %>% 
+  mutate(pelo_factor = as_factor(pelo))
+
+info_gatos_2 %>% count(pelo_factor)
+
+
+
+
+#
+```
+
+1. En este caso se trata de una variable categorica nominal
+2. Aca tenemos una variable categorica dicotomica 
+3. La variable edad seria (cuasi)cuantitativa ordinal
+4. La temperatura de la nariz sera una variable cuantitativa de intervalo
+5. Aca tenemos una variable cuantitativa de razón
+
+## Cargando datos
+
+```{r carga de datos}
+#| code-line-numbers: true
+#| warning: false
+
+# devtools::install_github("toninif/iapsArgentina") # <1>
+
+# Cargando usando readxl
+
+estado_afectivo <- read_xlsx(here("datos/anexo_total.xlsx"), 
+                              na = "99999") # <2>
+
+# Generando datos 
+
+set.seed(123) # <3> 
+
+datos_ejemplo <- tibble(valores = round(runif(20, min = 1, max = 10)))
+
+datos_normales <- tibble(valor = rnorm(10000, mean = 0, sd = 1)) # <4>
+
+datos_normales2 <- tibble(valor = rnorm(10000, mean = 3, sd = 2))
+
+
+#
+```
+
+1.  Esto aparece así porque es un paquete que no está en CRAN. Entonces para instalarlo hace falta utilizar una función que pertenece al paquete `devtools`.
+
+2.  Este argumento esta bueno porque le indicamos a R que si hay un "99999" (o cualquier otra codificación) significa que tiene que leerlo como NA
+
+3.  Esto es por cuestiones de reproducibilidad. Si se cambia el seed o semilla, entonces se producen otros numeros. Si se lo deja igual, entonces no cambia.
+
+4.  Estos datos siguen una distribución normal
+
+## Estadistica descriptiva
+
+```{r descriptivos}
+
+resumen <- datos_ejemplo %>%
+  summarise(
+    media = mean(valores),
+    mediana = median(valores),
+    modo = as.numeric(names(table(valores))[table(valores) == max(table(valores))])
+  )
+
+resumen
+
+```
+
+## Media y mediana
+
+```{r graficos}
+# Gráfico de densidad
+ggplot(datos_ejemplo, aes(x = valores)) +
+  geom_density() +
+  geom_vline(aes(xintercept = resumen$media), color = "blue", linetype = "dashed", linewidth = 1) +
+  geom_vline(aes(xintercept = resumen$mediana), color = "red", linetype = "dashed", linewidth = 1) +
+  labs(title = "Gráfico de densidad",
+       subtitle = "Media (azul) y mediana (roja)") +
+  theme_minimal()
+
+```
+
+## Modo
+
+```{r moda}
+# Gráfico de barras
+datos_ejemplo %>%
+  count(valores) %>%
+  ggplot(aes(x = valores, y = n)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = n), vjust = -0.5) +
+  scale_x_continuous(breaks = 1:10) +
+  geom_vline(aes(xintercept = resumen$media), color = "blue", linetype = "dashed", linewidth = 1) +
+  geom_vline(aes(xintercept = resumen$mediana), color = "yellow", linetype = "dashed", linewidth = 1) +
+  labs(title = "Gráfico de barras",
+       subtitle = "Frecuencia de cada valor",
+       x = "Valor",
+       y = "Frecuencia") +
+  theme_minimal()
+```
+
+## Dispersion
+
+```{r desvio}
+ggplot(datos_normales2, aes(x = valor)) +
+  geom_density() +
+    geom_vline(aes(xintercept = mean(valor)), color = "blue", linetype = "dashed", size = 1) +
+    geom_vline(aes(xintercept = mean(valor) - sd(valor)), color = "purple", linetype = "dotted", size = 1) +
+    geom_vline(aes(xintercept = mean(valor) + sd(valor)), color = "purple", linetype = "dotted", size = 1) +
+  labs(title = "Gráfico de densidad",
+       subtitle = "Media (azul) y desvio (violeta)") +
+  theme_minimal()
+
+#
+```
+
+## Ahora con una distribución normal
+
+### Media, mediana y modo
+
+```{r ejemplo normal}
+resumen_normales <- datos_normales %>%
+  summarise(
+    media = mean(valor),
+    mediana = median(valor)
+  )
+
+resumen_normales
+
+```
+
+### Graficos
+
+```{r}
+#| warning: false
+
+ggplot(datos_normales, aes(x = valor)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 15, alpha = 0.5, colour = "darkblue", fill = "lightblue") +
+  geom_density(color = "black") +
+  geom_vline(aes(xintercept = resumen_normales$media), color = "blue", linetype = "dashed", linewidth = 1) +
+  scale_x_continuous(limits = c(-4, 4)) +
+  geom_vline(aes(xintercept = resumen_normales$mediana), color = "red", linetype = "dotted", linewidth = 1) +
+  labs(title = "Histograma y gráfico de densidad",
+       subtitle = "Media (azul) y mediana (roja)") +
+  theme_minimal()
+
+```
+
+## Ahora con datos reales
+
+```{r}
+estado_afectivo %>% 
+  summarise(Valencia = mean(valenciaMedia),
+            Activacion = mean(activacionMedia),
+            Dominancia = mean(controlMedia))
+```
+
+### Queremos ver como es la distribucion de alguna de mis variables. Por ejemplo la valencia
+
+```{r grafico valencia}
+
+ggplot(estado_afectivo, aes(x = valenciaMedia)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 10, alpha = 0.5, colour = "darkgreen", fill = "lightgreen") +
+  geom_density(colour = "black") +
+  scale_x_continuous(breaks = 1:9) +
+  theme_minimal()
+```
+
+Lo mismo se puede hacer con la activación emocional
+
+```{r grafico activacion}
+
+ggplot(estado_afectivo, aes(x = activacionMedia)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 10, alpha = 0.5, colour = "darkgreen", fill = "lightgreen") +
+  geom_density(colour = "black") +
+  scale_x_continuous(breaks = 1:9) +
+  theme_minimal()
+```
+
+```{r}
+
+estado_afectivo %>% 
+  group_by(poblacion) %>% 
+  summarise(valencia = mean(valenciaMedia),
+            activacion = mean(activacionMedia))
+
+diferencias_hym <- estado_afectivo %>% 
+  filter(poblacion %in% c("Hombres", "Mujeres")) %>% 
+  mutate(poblacion_factor = as_factor(poblacion))
+
+t.test(diferencias_hym$valenciaMedia ~ diferencias_hym$poblacion_factor, alternative = "two.sided")
+
+```
